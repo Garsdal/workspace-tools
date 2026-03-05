@@ -13,7 +13,10 @@ _agent_rm() {
   local query="$1"
   local repo_dir
   repo_dir=$(_agent_repo_dir) || return 1
-  local wt_dir="${repo_dir}.worktrees"
+
+  local main_repo_dir
+  main_repo_dir=$(_agent_main_repo_dir "$repo_dir") || return 1
+  local wt_dir="${main_repo_dir}.worktrees"
 
   # Resolve query (could be a hash, branch name, or fuzzy match)
   local name

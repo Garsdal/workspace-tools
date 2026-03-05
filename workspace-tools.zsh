@@ -19,6 +19,7 @@ agent() {
   case "$subcmd" in
     new)     _agent_new "$@" ;;
     open|o)  _agent_open "$@" ;;
+    main|m)  _agent_main "$@" ;;
     rm)      _agent_rm "$@" ;;
     list|ls) _agent_list "$@" ;;
     term|t)  _agent_term "$@" ;;

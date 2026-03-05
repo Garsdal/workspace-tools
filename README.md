@@ -22,6 +22,7 @@ Usage: agent <command> [args...]
 Commands:
   new  <branch|.> [options]      Create worktree + workspace, open VS Code
   open [-n] [name]               Re-open an existing workspace
+  main                           Open the main worktree in VS Code
   rm   <branch>                  Remove worktree + workspace(s)
   list                           List all sessions
   term <name>                    Set terminal tab name (--reset to clear)
@@ -31,7 +32,7 @@ Options for new:
   --base <ref>   Branch from a specific ref (default: current branch)
   --track        Check out an existing remote branch
 
-Aliases: o → open, ls → list, t → term
+Aliases: o → open, m → main, ls → list, t → term
 ```
 
 ## Examples
@@ -42,6 +43,7 @@ agent new .                       # branch from current, prompt for name
 agent new fix-api --base main
 agent new feat-remote --track     # check out remote branch
 agent open                        # interactive picker
+agent main                        # open main worktree window
 agent rm feat-feature-store
 agent rm a1b2                     # remove by hash from agent list
 agent list

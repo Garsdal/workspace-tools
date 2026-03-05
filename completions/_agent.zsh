@@ -6,6 +6,7 @@ _agent_completion() {
   subcmds=(
     'new:Create worktree + workspace, open VS Code'
     'open:Re-open an existing workspace'
+    'main:Open the main worktree in VS Code'
     'rm:Remove a worktree'
     'list:List worktrees and workspaces'
     'term:Set terminal tab name'

@@ -12,6 +12,25 @@ _agent_repo_dir() {
   echo "$dir"
 }
 
+# Resolve the main (non-worktree) repository directory.
+# Works correctly whether called from the main repo or any worktree.
+_agent_main_repo_dir() {
+  local repo_dir="$1"
+  local main_dir
+  # Primary: git worktree list always shows the main worktree first
+  main_dir="$(git -C "$repo_dir" worktree list --porcelain 2>/dev/null | head -1 | sed 's/^worktree //')"
+  if [[ -z "$main_dir" || ! -d "$main_dir" ]]; then
+    # Fallback: derive from git-common-dir
+    main_dir="$(git -C "$repo_dir" rev-parse --path-format=absolute --git-common-dir 2>/dev/null)"
+    main_dir="${main_dir%/.git}"
+  fi
+  if [[ -z "$main_dir" || ! -d "$main_dir" ]]; then
+    echo "${_C_YELLOW}✗ Could not resolve main repository directory${_C_RESET}" >&2
+    return 1
+  fi
+  echo "$main_dir"
+}
+
 # Generate a stable 4-char hash ID from a string
 _agent_hash() {
   echo -n "$1" | md5 -q 2>/dev/null | head -c 4

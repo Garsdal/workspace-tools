@@ -33,8 +33,7 @@ _agent_new() {
 
   # Resolve the main repository directory (works from worktrees too)
   local main_repo_dir
-  main_repo_dir="$(git -C "$repo_dir" rev-parse --path-format=absolute --git-common-dir)"
-  main_repo_dir="${main_repo_dir%/.git}"
+  main_repo_dir=$(_agent_main_repo_dir "$repo_dir") || return 1
 
   # ── Handle "." — prompt for branch name ──
   if [[ "$branch" == "." ]]; then
@@ -53,7 +52,7 @@ _agent_new() {
     branch="${branch#origin/}"
   fi
 
-  local wt_dir="${repo_dir}.worktrees"
+  local wt_dir="${main_repo_dir}.worktrees"
   local worktree_path="$wt_dir/$branch"
 
   if [[ -d "$worktree_path" ]]; then
@@ -109,8 +108,11 @@ _agent_new() {
     return 1
   fi
 
-  # ── Copy .vscode settings from main repo (for --track) ──
-  if $track_remote && [[ -d "$main_repo_dir/.vscode" ]]; then
+  # ── Checkout the branch in the new worktree ──
+  git -C "$worktree_path" checkout "$branch" 2>/dev/null
+
+  # ── Copy .vscode settings from main repo ──
+  if [[ -d "$main_repo_dir/.vscode" ]]; then
     rm -rf "$worktree_path/.vscode"
     cp -R "$main_repo_dir/.vscode" "$worktree_path/.vscode"
     echo "${_C_GREEN}✓ .vscode${_C_RESET}    ${_C_DIM}copied from main repo${_C_RESET}"

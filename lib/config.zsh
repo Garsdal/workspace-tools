@@ -3,4 +3,4 @@
 
 # ─── Configuration ────────────────────────────────────────────────────────────
 AGENT_WORKSPACES_DIR="$HOME/Workspaces"
-_WT_VERSION="0.2.0"
+_WT_VERSION="0.0.3"
