@@ -3,6 +3,8 @@
 
 _agent_help() {
   cat <<EOF
+${_C_DIM}workspace-tools v${_WT_VERSION}${_C_RESET}
+
 Usage: ${_C_BOLD}agent${_C_RESET} <command> [args...]
 
 ${_C_BOLD}Commands:${_C_RESET}
