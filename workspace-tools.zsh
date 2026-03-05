@@ -30,6 +30,11 @@ _agent_hash() {
   echo -n "$1" | md5 -q 2>/dev/null | head -c 4
 }
 
+# Flatten a branch name for use as a directory/file name (e.g. mlg/fix-plot → mlg-fix-plot)
+_agent_flat_name() {
+  echo "${1//\//-}"
+}
+
 # Extract branch name from workspace basename (supports both formats)
 # New: name_YYYYMMDD-HHMMSS  Old: YYYYMMDD-HHMMSS_name
 _agent_ws_branch() {
@@ -112,8 +117,10 @@ _agent_resolve_branch() {
   local repo_dir="$2"
   local wt_dir="${repo_dir}.worktrees"
 
-  # 1. Direct worktree match
+  # 1. Direct worktree match (try as-is and flattened)
   [[ -d "$wt_dir/$query" ]] && echo "$query" && return 0
+  local flat_query=$(_agent_flat_name "$query")
+  [[ "$flat_query" != "$query" && -d "$wt_dir/$flat_query" ]] && echo "$flat_query" && return 0
 
   # 2. Hash match against workspace files → extract branch name
   for f in "$AGENT_WORKSPACES_DIR"/*.code-workspace(N); do
@@ -143,7 +150,7 @@ _agent_resolve_branch() {
     echo "${branch_matches[1]}" && return 0
   fi
 
-  echo "$query" && return 0
+  echo "$(_agent_flat_name "$query")" && return 0
 }
 
 # ─── Terminal title persistence ───────────────────────────────────────────────
@@ -225,7 +232,8 @@ _agent_new() {
   fi
 
   local wt_dir="${repo_dir}.worktrees"
-  local worktree_path="$wt_dir/$branch"
+  local flat_branch=$(_agent_flat_name "$branch")
+  local worktree_path="$wt_dir/$flat_branch"
 
   if [[ -d "$worktree_path" ]]; then
     echo "${_C_YELLOW}⚠  Worktree already exists: $worktree_path${_C_RESET}"
@@ -298,8 +306,8 @@ _agent_new() {
   # ── Create workspace file with timestamp ──
   mkdir -p "$AGENT_WORKSPACES_DIR"
   local ts=$(date +%Y%m%d-%H%M%S)
-  # Use the last path component as a clean workspace name
-  local clean_name="${branch##*/}"
+  # Flatten branch name for use in workspace filename (e.g. mlg/fix-plot → mlg-fix-plot)
+  local clean_name=$(_agent_flat_name "$branch")
   local workspace_file="$AGENT_WORKSPACES_DIR/${clean_name}_${ts}.code-workspace"
 
   # Use repo name for --track, branch name otherwise
@@ -469,11 +477,27 @@ _agent_rm() {
     echo "${_C_GREEN}✓ Workspace removed:${_C_RESET} ${ws:t}"
   done
 
-  # Optionally delete branch
-  echo -n "Also delete the branch '$name'? [y/N] "
+  # Optionally delete branch (resolve real git branch name, which may contain /)
+  local git_branch="$name"
+  # Try exact match first, then find branch whose flat name matches
+  local real_branch
+  real_branch=$(git -C "$repo_dir" for-each-ref --format='%(refname:short)' refs/heads/ | grep -xF "$name" || true)
+  if [[ -z "$real_branch" ]]; then
+    # Compare flat version of each branch to our flat name
+    local b
+    while IFS= read -r b; do
+      if [[ "$(_agent_flat_name "$b")" == "$name" ]]; then
+        real_branch="$b"
+        break
+      fi
+    done < <(git -C "$repo_dir" for-each-ref --format='%(refname:short)' refs/heads/)
+  fi
+  [[ -n "$real_branch" ]] && git_branch="$real_branch"
+
+  echo -n "Also delete the branch '$git_branch'? [y/N] "
   read del_branch
   if [[ "$del_branch" == [yY] ]]; then
-    git -C "$repo_dir" branch -D "$name" 2>/dev/null \
+    git -C "$repo_dir" branch -D "$git_branch" 2>/dev/null \
       && echo "${_C_GREEN}✓ Branch deleted${_C_RESET}" \
       || echo "${_C_YELLOW}⚠  Branch not found${_C_RESET}"
   fi
@@ -532,7 +556,7 @@ _agent_list() {
   # Print each branch with its status
   for branch in "${ordered_branches[@]}"; do
     local has_wt=false
-    [[ -d "$wt_dir/$branch" ]] && has_wt=true
+    [[ -d "$wt_dir/$branch" || -d "$wt_dir/$(_agent_flat_name "$branch")" ]] && has_wt=true
 
     # Find newest workspace timestamp + hash for this branch
     local newest_ts=""
