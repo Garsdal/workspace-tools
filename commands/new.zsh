@@ -111,11 +111,11 @@ _agent_new() {
   # ── Checkout the branch in the new worktree ──
   git -C "$worktree_path" checkout "$branch" 2>/dev/null
 
-  # ── Copy .vscode settings from main repo ──
-  if [[ -d "$main_repo_dir/.vscode" ]]; then
+  # ── Copy .vscode settings from the current repo/worktree ──
+  if [[ -d "$repo_dir/.vscode" ]]; then
     rm -rf "$worktree_path/.vscode"
-    cp -R "$main_repo_dir/.vscode" "$worktree_path/.vscode"
-    echo "${_C_GREEN}✓ .vscode${_C_RESET}    ${_C_DIM}copied from main repo${_C_RESET}"
+    cp -R "$repo_dir/.vscode" "$worktree_path/.vscode"
+    echo "${_C_GREEN}✓ .vscode${_C_RESET}    ${_C_DIM}copied from current worktree${_C_RESET}"
   fi
 
   # ── Compute workspace folder (map cwd into worktree) ──
