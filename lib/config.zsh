@@ -3,4 +3,5 @@
 
 # ─── Configuration ────────────────────────────────────────────────────────────
 AGENT_WORKSPACES_DIR="$HOME/Workspaces"
-_WT_VERSION="0.0.4"
+AGENT_MAX_SESSIONS=${AGENT_MAX_SESSIONS:-5}
+_WT_VERSION="0.0.5"

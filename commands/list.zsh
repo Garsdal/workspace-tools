@@ -51,6 +51,28 @@ _agent_list() {
     return
   fi
 
+  # Limit to most recent sessions
+  local max_sessions="${AGENT_MAX_SESSIONS:-5}"
+  local total_branches=${#ordered_branches[@]}
+  local truncated=false
+  if [[ $total_branches -gt $max_sessions ]]; then
+    ordered_branches=("${ordered_branches[@]:0:$max_sessions}")
+    truncated=true
+  fi
+
+  # ── Fixed-width column layout ──
+  # Measure the longest branch name for alignment
+  local max_name_len=0
+  for branch in "${ordered_branches[@]}"; do
+    (( ${#branch} > max_name_len )) && max_name_len=${#branch}
+  done
+  for ws in "${manual_workspaces[@]}"; do
+    local base="${ws:t:r}"
+    (( ${#base} > max_name_len )) && max_name_len=${#base}
+  done
+  # Minimum width
+  (( max_name_len < 20 )) && max_name_len=20
+
   # Print each branch with its status
   for branch in "${ordered_branches[@]}"; do
     local has_wt=false
@@ -74,7 +96,7 @@ _agent_list() {
     done
 
     # Format timestamp
-    local display_ts=""
+    local display_ts="                "
     if [[ -n "$newest_ts" ]]; then
       display_ts="${newest_ts:0:4}-${newest_ts:4:2}-${newest_ts:6:2} ${newest_ts:9:2}:${newest_ts:11:2}"
     fi
@@ -87,18 +109,27 @@ _agent_list() {
       indicator="${_C_DIM}○${_C_RESET}"
     fi
 
-    # Build the line
-    local line="  $indicator ${_C_MAGENTA}${newest_hash:-    }${_C_RESET} ${_C_CYAN}${_C_BOLD}$branch${_C_RESET}"
-    [[ -n "$display_ts" ]] && line="$line  ${_C_YELLOW}$display_ts${_C_RESET}"
-    [[ $ws_count -gt 1 ]] && line="$line  ${_C_DIM}(${ws_count} sessions)${_C_RESET}"
-    echo "$line"
+    # Build the line with fixed-width columns
+    local hash_col=$(printf '%-4s' "${newest_hash:-    }")
+    local name_col=$(printf "%-${max_name_len}s" "$branch")
+    local extra=""
+    [[ $ws_count -gt 1 ]] && extra="  ${_C_DIM}(${ws_count} sessions)${_C_RESET}"
+    echo "  $indicator ${_C_MAGENTA}${hash_col}${_C_RESET} ${_C_CYAN}${_C_BOLD}${name_col}${_C_RESET}  ${_C_YELLOW}${display_ts}${_C_RESET}${extra}"
   done
 
   # Manual workspaces (not created by agent)
   for ws in "${manual_workspaces[@]}"; do
     local h=$(_agent_hash "${ws:t:r}")
-    echo "  ${_C_DIM}◆${_C_RESET} ${_C_MAGENTA}$h${_C_RESET} ${_C_CYAN}${ws:t:r}${_C_RESET}  ${_C_DIM}(manual)${_C_RESET}"
+    local base="${ws:t:r}"
+    local hash_col=$(printf '%-4s' "$h")
+    local name_col=$(printf "%-${max_name_len}s" "$base")
+    echo "  ${_C_DIM}◆${_C_RESET} ${_C_MAGENTA}${hash_col}${_C_RESET} ${_C_CYAN}${name_col}${_C_RESET}  ${_C_DIM}(manual)${_C_RESET}"
   done
+
+  if $truncated; then
+    echo ""
+    echo "  ${_C_DIM}… and $((total_branches - max_sessions)) more (set AGENT_MAX_SESSIONS to show more)${_C_RESET}"
+  fi
 
   echo ""
   echo "${_C_DIM}● active  ○ removed  Use hash with: agent rm <hash>${_C_RESET}"

@@ -53,7 +53,8 @@ _agent_new() {
   fi
 
   local wt_dir="${main_repo_dir}.worktrees"
-  local worktree_path="$wt_dir/$branch"
+  local flat_branch=$(_agent_flat_name "$branch")
+  local worktree_path="$wt_dir/$flat_branch"
 
   if [[ -d "$worktree_path" ]]; then
     echo "${_C_YELLOW}⚠  Worktree already exists: $worktree_path${_C_RESET}"
@@ -129,9 +130,7 @@ _agent_new() {
   # ── Create workspace file with timestamp ──
   mkdir -p "$AGENT_WORKSPACES_DIR"
   local ts=$(date +%Y%m%d-%H%M%S)
-  # Use the last path component as a clean workspace name
-  local clean_name="${branch##*/}"
-  local workspace_file="$AGENT_WORKSPACES_DIR/${clean_name}_${ts}.code-workspace"
+  local workspace_file="$AGENT_WORKSPACES_DIR/${flat_branch}_${ts}.code-workspace"
 
   # Always use repo name as folder display name
   local folder_display_name="$(basename "$main_repo_dir")"
@@ -143,7 +142,7 @@ _agent_new() {
   ],
   "settings": {
     "git.openRepositoryInParentFolders": "never",
-    "window.title": "\${dirty}\${activeEditorShort}\${separator}$clean_name"
+    "window.title": "\${dirty}\${activeEditorShort}\${separator}$flat_branch"
   }
 }
 EOF
@@ -154,4 +153,7 @@ EOF
   echo "${_C_GREEN}✓ Folder${_C_RESET}     ${_C_DIM}$workspace_folder${_C_RESET}"
 
   code -n "$workspace_file"
+
+  # Open Copilot Chat panel in the new window (macOS)
+  (sleep 3 && open "vscode://command/workbench.action.chat.open" 2>/dev/null) &!
 }

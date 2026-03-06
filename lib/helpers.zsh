@@ -2,6 +2,12 @@
 # lib/helpers.zsh — Shared helper functions
 
 # ─── Helpers ──────────────────────────────────────────────────────────────────
+
+# Flatten branch names for filesystem use (e.g. mlg/XX → mlg-XX)
+_agent_flat_name() {
+  echo "${1//\//-}"
+}
+
 _agent_repo_dir() {
   local dir
   dir=$(git rev-parse --show-toplevel 2>/dev/null)
