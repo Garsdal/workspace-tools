@@ -68,6 +68,14 @@ _agent_rm() {
   read confirm
   [[ "$confirm" != [yY] ]] && echo "Aborted." && return 0
 
+  # Resolve the actual git branch name before removal (may contain / even if dir is flat)
+  local actual_branch="$name"
+  if $has_worktree; then
+    local wb
+    wb=$(git -C "$worktree_path" rev-parse --abbrev-ref HEAD 2>/dev/null)
+    [[ -n "$wb" ]] && actual_branch="$wb"
+  fi
+
   # Remove worktree
   if $has_worktree; then
     git -C "$repo_dir" worktree remove "$worktree_path" --force 2>/dev/null
@@ -86,12 +94,10 @@ _agent_rm() {
     rm "$ws"
     echo "${_C_GREEN}✓ Workspace removed:${_C_RESET} ${ws:t}"
   done
-
-  # Optionally delete branch
-  echo -n "Also delete the branch '$name'? [y/N] "
+  echo -n "Also delete the branch '$actual_branch'? [y/N] "
   read del_branch
   if [[ "$del_branch" == [yY] ]]; then
-    git -C "$repo_dir" branch -D "$name" 2>/dev/null \
+    git -C "$repo_dir" branch -D "$actual_branch" 2>/dev/null \
       && echo "${_C_GREEN}✓ Branch deleted${_C_RESET}" \
       || echo "${_C_YELLOW}⚠  Branch not found${_C_RESET}"
   fi
