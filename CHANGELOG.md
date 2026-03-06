@@ -1,5 +1,18 @@
 # Changelog
 
+## v0.0.6
+
+### Sort session list by newest session timestamp
+`agent list` now orders sessions by the timestamp embedded in the workspace filename (`YYYYMMDD-HHMMSS`), so the most recently created session always appears first. Worktrees without a workspace file are sorted by directory modification time, and always appear below timestamped sessions.
+
+### CI-based release workflow
+Version stamping is now handled automatically by CI on tag push. See `AGENTS.md` for details.
+
+**Files changed:**
+- `commands/list.zsh` — Worktrees glob uses `Om` (newest mtime first); added re-sort of `ordered_branches` by best filename-embedded timestamp (descending) after the array is fully built
+- `.github/workflows/release.yml` — New release workflow that stamps `_WT_VERSION` on tag push
+- `AGENTS.md` — Versioning guide for contributors and AI agents
+
 ## v0.0.5
 
 ### Fix flat-naming with `/` in branch names
