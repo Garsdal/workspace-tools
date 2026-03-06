@@ -7,8 +7,8 @@
 ### Release flow
 
 1. Merge your PR to `main`.
-2. Tag the release: `git tag v0.1.0 && git push --tags`
-3. CI (`.github/workflows/release.yml`) will:
+2. Tag the release on main: `git fetch origin main && git tag v0.0.7 origin/main && git push origin v0.0.7`
+3. CI (`.github/workflows/release.yml`) triggers on **tag push** (not on PR merge) and will:
    - Write the version from the tag into `lib/config.zsh`
    - Commit the change back to `main`
    - Create a GitHub Release with auto-generated notes
