@@ -26,15 +26,37 @@ _agent_list() {
     fi
   done
 
-  # Worktrees that don't have a workspace yet
+  # Worktrees that don't have a workspace yet (sorted newest-first by mtime)
   if [[ -d "$wt_dir" ]]; then
-    for d in "$wt_dir"/*(N/); do
+    for d in "$wt_dir"/*(N/Om); do
       local name="${d:t}"
       if [[ -z "${seen_branches[$name]}" ]]; then
         seen_branches[$name]=1
         ordered_branches+=("$name")
       fi
     done
+  fi
+
+  # Re-sort ordered_branches by newest filename-embedded timestamp (newest first).
+  # Branches with no workspace timestamp (worktree-only) sort to the bottom.
+  if [[ ${#ordered_branches[@]} -gt 1 ]]; then
+    local -a _ts_pairs=()
+    for _b in "${ordered_branches[@]}"; do
+      local _best="00000000-000000"
+      for _ws in "${workspaces[@]}"; do
+        local _base="${_ws:t:r}"
+        local _wbranch=$(_agent_ws_branch "$_base")
+        local _wts=$(_agent_ws_ts "$_base")
+        if [[ "$_wbranch" == "$_b" && -n "$_wts" && "$_wts" > "$_best" ]]; then
+          _best="$_wts"
+        fi
+      done
+      _ts_pairs+=("${_best} ${_b}")
+    done
+    ordered_branches=()
+    while IFS= read -r _line; do
+      ordered_branches+=("${_line#* }")
+    done < <(printf '%s\n' "${_ts_pairs[@]}" | sort -r)
   fi
 
   # Also show non-timestamped workspaces (manual ones)
