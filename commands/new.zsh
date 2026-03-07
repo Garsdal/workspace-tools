@@ -112,19 +112,47 @@ _agent_new() {
   # ── Checkout the branch in the new worktree ──
   git -C "$worktree_path" checkout "$branch" 2>/dev/null
 
-  # ── Copy .vscode settings from the current repo/worktree ──
-  if [[ -d "$repo_dir/.vscode" ]]; then
-    rm -rf "$worktree_path/.vscode"
-    cp -R "$repo_dir/.vscode" "$worktree_path/.vscode"
-    echo "${_C_GREEN}✓ .vscode${_C_RESET}    ${_C_DIM}copied from current worktree${_C_RESET}"
+  # ── Compute relative subfolder path (for monorepo support) ──
+  local cwd="$PWD"
+  local rel=""
+  if [[ "$cwd" == "$repo_dir/"* ]]; then
+    rel="${cwd#$repo_dir/}"
   fi
 
+  # ── Copy local dev files from main repo ──
+  for item in "${AGENT_COPY_PATHS[@]}"; do
+    # Root-level: main_repo/.vscode -> worktree/.vscode
+    local src="$main_repo_dir/$item"
+    if [[ -e "$src" ]]; then
+      if [[ -d "$src" ]]; then
+        rm -rf "$worktree_path/$item"
+        cp -R "$src" "$worktree_path/$item"
+      else
+        cp "$src" "$worktree_path/$item"
+      fi
+      echo "${_C_GREEN}✓ ${item}${_C_RESET}$(printf '%*s' $((10 - ${#item})) '')${_C_DIM}copied from main repo${_C_RESET}"
+    fi
+
+    # Subfolder: main_repo/projects/api/.env -> worktree/projects/api/.env
+    if [[ -n "$rel" ]]; then
+      local sub_src="$main_repo_dir/$rel/$item"
+      if [[ -e "$sub_src" ]]; then
+        mkdir -p "$worktree_path/$rel"
+        if [[ -d "$sub_src" ]]; then
+          rm -rf "$worktree_path/$rel/$item"
+          cp -R "$sub_src" "$worktree_path/$rel/$item"
+        else
+          cp "$sub_src" "$worktree_path/$rel/$item"
+        fi
+        echo "${_C_GREEN}✓ ${rel}/${item}${_C_RESET}$(printf '%*s' $((10 - ${#rel} - ${#item} - 1)) '')${_C_DIM}copied from main repo${_C_RESET}"
+      fi
+    fi
+  done
+
   # ── Compute workspace folder (map cwd into worktree) ──
-  local cwd="$PWD"
   local workspace_folder="$worktree_path"
-  if [[ "$cwd" == "$repo_dir"* ]]; then
-    local rel="${cwd#$repo_dir}"
-    workspace_folder="$worktree_path$rel"
+  if [[ -n "$rel" ]]; then
+    workspace_folder="$worktree_path/$rel"
   fi
 
   # ── Create workspace file with timestamp ──
