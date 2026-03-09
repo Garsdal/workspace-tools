@@ -1,5 +1,21 @@
 # Changelog
 
+## v0.0.7
+
+### Faster session list with `--all` flag
+`agent list` is now significantly faster — workspace metadata (timestamps, hashes, counts) is cached in a single pass instead of re-scanning all files per branch (O(n) vs O(n×m)). A new `--all` / `-a` flag shows every session instead of only the last 5.
+
+**Files changed:**
+- `commands/list.zsh` — Single-pass workspace scan with associative-array caches; added `--all` / `-a` flag; updated truncation hint to show the flag
+- `commands/help.zsh` — Documented `--all` flag in help output and examples
+- `completions/_agent.zsh` — Updated list description
+
+### Show copied files in `agent new` summary
+Copied dev files (`.vscode`, `.env`, etc.) now appear as a dedicated `✓ Copied` line in the summary block instead of printing during the copy loop.
+
+**Files changed:**
+- `commands/new.zsh` — Collect copied items into an array; display as `✓ Copied .vscode, .env, …` after Worktree/Workspace/Folder lines
+
 ## v0.0.6
 
 ### Sort session list by newest session timestamp

@@ -12,7 +12,7 @@ ${_C_BOLD}Commands:${_C_RESET}
   ${_C_CYAN}open${_C_RESET} [-n] [name]               Re-open an existing workspace
   ${_C_CYAN}main${_C_RESET}                           Open the main worktree in VS Code
   ${_C_CYAN}rm${_C_RESET}   <branch>                  Remove worktree + workspace(s)
-  ${_C_CYAN}list${_C_RESET}                           List all sessions
+  ${_C_CYAN}list${_C_RESET} [--all]                   List sessions (default: last $AGENT_MAX_SESSIONS)
   ${_C_CYAN}term${_C_RESET} <name>                    Set terminal tab name (--reset to clear)
   ${_C_CYAN}help${_C_RESET}                           Show this help
 
@@ -31,6 +31,7 @@ ${_C_BOLD}Examples:${_C_RESET}
   ${_C_CYAN}agent rm feat-feature-store${_C_RESET}
   ${_C_CYAN}agent rm a1b2${_C_RESET}                   ${_C_DIM}# remove by hash from agent list${_C_RESET}
   ${_C_CYAN}agent list${_C_RESET}
+  ${_C_CYAN}agent list --all${_C_RESET}               ${_C_DIM}# show all sessions${_C_RESET}
   ${_C_CYAN}agent term my-session${_C_RESET}
 EOF
 }

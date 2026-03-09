@@ -120,6 +120,7 @@ _agent_new() {
   fi
 
   # ── Copy local dev files from main repo ──
+  local -a copied_items=()
   for item in "${AGENT_COPY_PATHS[@]}"; do
     # Root-level: main_repo/.vscode -> worktree/.vscode
     local src="$main_repo_dir/$item"
@@ -130,7 +131,7 @@ _agent_new() {
       else
         cp "$src" "$worktree_path/$item"
       fi
-      echo "${_C_GREEN}✓ ${item}${_C_RESET}$(printf '%*s' $((10 - ${#item})) '')${_C_DIM}copied from main repo${_C_RESET}"
+      copied_items+=("$item")
     fi
 
     # Subfolder: main_repo/projects/api/.env -> worktree/projects/api/.env
@@ -144,7 +145,7 @@ _agent_new() {
         else
           cp "$sub_src" "$worktree_path/$rel/$item"
         fi
-        echo "${_C_GREEN}✓ ${rel}/${item}${_C_RESET}$(printf '%*s' $((10 - ${#rel} - ${#item} - 1)) '')${_C_DIM}copied from main repo${_C_RESET}"
+        copied_items+=("$rel/$item")
       fi
     fi
   done
@@ -179,6 +180,9 @@ EOF
   echo "${_C_GREEN}✓ Worktree${_C_RESET}   ${_C_DIM}$worktree_path${_C_RESET}"
   echo "${_C_GREEN}✓ Workspace${_C_RESET}  ${_C_DIM}${workspace_file:t}${_C_RESET}"
   echo "${_C_GREEN}✓ Folder${_C_RESET}     ${_C_DIM}$workspace_folder${_C_RESET}"
+  if (( ${#copied_items[@]} )); then
+    echo "${_C_GREEN}✓ Copied${_C_RESET}     ${_C_DIM}${(j:, :)copied_items}${_C_RESET}"
+  fi
 
   code -n "$workspace_file"
 

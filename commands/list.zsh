@@ -2,6 +2,15 @@
 # commands/list.zsh — List all sessions
 
 _agent_list() {
+  # ── Parse flags ──
+  local show_all=false
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --all|-a) show_all=true; shift ;;
+      *) echo "${_C_YELLOW}✗ Unknown option: $1${_C_RESET}"; return 1 ;;
+    esac
+  done
+
   local repo_dir
   repo_dir=$(_agent_repo_dir) || return 1
   local wt_dir="${repo_dir}.worktrees"
@@ -10,19 +19,38 @@ _agent_list() {
   echo "${_C_BOLD}── Sessions ($repo_name) ──${_C_RESET}"
   echo ""
 
-  # Collect all known branch names from worktrees + workspaces
-  local -A seen_branches  # branch -> 1
+  # ── Single-pass workspace scan: build caches ──
+  local -A branch_best_ts    # branch -> newest timestamp
+  local -A branch_best_hash  # branch -> hash of newest workspace
+  local -A branch_ws_count   # branch -> workspace count
+  local -A seen_branches     # branch -> 1
   local -a ordered_branches
+  local -a manual_workspaces
 
-  # Workspaces sorted newest-first by modification time
   local workspaces=("$AGENT_WORKSPACES_DIR"/*.code-workspace(NOm))
   for ws in "${workspaces[@]}"; do
     local base="${ws:t:r}"
-    local branch_part=$(_agent_ws_branch "$base")
-    # Only process timestamped workspace files
-    if _agent_ws_has_ts "$base" && [[ -z "${seen_branches[$branch_part]}" ]]; then
-      seen_branches[$branch_part]=1
-      ordered_branches+=("$branch_part")
+    if ! _agent_ws_has_ts "$base"; then
+      manual_workspaces+=("$ws")
+      continue
+    fi
+    local bp=$(_agent_ws_branch "$base")
+    local ts=$(_agent_ws_ts "$base")
+
+    # Track this branch
+    if [[ -z "${seen_branches[$bp]}" ]]; then
+      seen_branches[$bp]=1
+      ordered_branches+=("$bp")
+      branch_best_ts[$bp]="$ts"
+      branch_best_hash[$bp]=$(_agent_hash "$base")
+      branch_ws_count[$bp]=1
+    else
+      branch_ws_count[$bp]=$(( ${branch_ws_count[$bp]} + 1 ))
+      # Keep the newest timestamp
+      if [[ "$ts" > "${branch_best_ts[$bp]}" ]]; then
+        branch_best_ts[$bp]="$ts"
+        branch_best_hash[$bp]=$(_agent_hash "$base")
+      fi
     fi
   done
 
@@ -33,25 +61,16 @@ _agent_list() {
       if [[ -z "${seen_branches[$name]}" ]]; then
         seen_branches[$name]=1
         ordered_branches+=("$name")
+        branch_best_ts[$name]="00000000-000000"
       fi
     done
   fi
 
-  # Re-sort ordered_branches by newest filename-embedded timestamp (newest first).
-  # Branches with no workspace timestamp (worktree-only) sort to the bottom.
+  # ── Sort by newest timestamp (descending) ──
   if [[ ${#ordered_branches[@]} -gt 1 ]]; then
     local -a _ts_pairs=()
     for _b in "${ordered_branches[@]}"; do
-      local _best="00000000-000000"
-      for _ws in "${workspaces[@]}"; do
-        local _base="${_ws:t:r}"
-        local _wbranch=$(_agent_ws_branch "$_base")
-        local _wts=$(_agent_ws_ts "$_base")
-        if [[ "$_wbranch" == "$_b" && -n "$_wts" && "$_wts" > "$_best" ]]; then
-          _best="$_wts"
-        fi
-      done
-      _ts_pairs+=("${_best} ${_b}")
+      _ts_pairs+=("${branch_best_ts[$_b]} ${_b}")
     done
     ordered_branches=()
     while IFS= read -r _line; do
@@ -59,31 +78,21 @@ _agent_list() {
     done < <(printf '%s\n' "${_ts_pairs[@]}" | sort -r)
   fi
 
-  # Also show non-timestamped workspaces (manual ones)
-  local -a manual_workspaces
-  for ws in "${workspaces[@]}"; do
-    local base="${ws:t:r}"
-    if ! _agent_ws_has_ts "$base"; then
-      manual_workspaces+=("$ws")
-    fi
-  done
-
   if [[ ${#ordered_branches[@]} -eq 0 && ${#manual_workspaces[@]} -eq 0 ]]; then
     echo "  ${_C_DIM}(none)${_C_RESET}"
     return
   fi
 
-  # Limit to most recent sessions
+  # ── Apply session limit (unless --all) ──
   local max_sessions="${AGENT_MAX_SESSIONS:-5}"
   local total_branches=${#ordered_branches[@]}
   local truncated=false
-  if [[ $total_branches -gt $max_sessions ]]; then
+  if ! $show_all && [[ $total_branches -gt $max_sessions ]]; then
     ordered_branches=("${ordered_branches[@]:0:$max_sessions}")
     truncated=true
   fi
 
   # ── Fixed-width column layout ──
-  # Measure the longest branch name for alignment
   local max_name_len=0
   for branch in "${ordered_branches[@]}"; do
     (( ${#branch} > max_name_len )) && max_name_len=${#branch}
@@ -92,34 +101,20 @@ _agent_list() {
     local base="${ws:t:r}"
     (( ${#base} > max_name_len )) && max_name_len=${#base}
   done
-  # Minimum width
   (( max_name_len < 20 )) && max_name_len=20
 
-  # Print each branch with its status
+  # ── Print each branch using cached data ──
   for branch in "${ordered_branches[@]}"; do
     local has_wt=false
     [[ -d "$wt_dir/$branch" ]] && has_wt=true
 
-    # Find newest workspace timestamp + hash for this branch
-    local newest_ts=""
-    local newest_hash=""
-    local ws_count=0
-    for ws in "${workspaces[@]}"; do
-      local base="${ws:t:r}"
-      local ws_branch=$(_agent_ws_branch "$base")
-      local ws_ts=$(_agent_ws_ts "$base")
-      if [[ "$ws_branch" == "$branch" && -n "$ws_ts" ]]; then
-        ((ws_count++))
-        if [[ -z "$newest_ts" ]]; then
-          newest_ts="$ws_ts"
-          newest_hash=$(_agent_hash "$base")
-        fi
-      fi
-    done
+    local newest_ts="${branch_best_ts[$branch]}"
+    local newest_hash="${branch_best_hash[$branch]}"
+    local ws_count="${branch_ws_count[$branch]:-0}"
 
     # Format timestamp
     local display_ts="                "
-    if [[ -n "$newest_ts" ]]; then
+    if [[ -n "$newest_ts" && "$newest_ts" != "00000000-000000" ]]; then
       display_ts="${newest_ts:0:4}-${newest_ts:4:2}-${newest_ts:6:2} ${newest_ts:9:2}:${newest_ts:11:2}"
     fi
 
@@ -150,7 +145,7 @@ _agent_list() {
 
   if $truncated; then
     echo ""
-    echo "  ${_C_DIM}… and $((total_branches - max_sessions)) more (set AGENT_MAX_SESSIONS to show more)${_C_RESET}"
+    echo "  ${_C_DIM}… and $((total_branches - max_sessions)) more (use ${_C_RESET}${_C_CYAN}agent list --all${_C_RESET}${_C_DIM} to show all)${_C_RESET}"
   fi
 
   echo ""
