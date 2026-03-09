@@ -1,5 +1,14 @@
 # Changelog
 
+## v0.0.8
+
+### Interactive copy of `.env` and `.vscode` in `agent new`
+When creating a new worktree, `agent new` now checks the **current directory** for `.env`, `.env.local`, and `.vscode`. If any are found, the user is prompted before copying them to the new worktree. This replaces the previous automatic copy from the main repo directory, which was unreliable since these files are typically in `.gitignore` and not present in the bare repo.
+
+**Files changed:**
+- `commands/new.zsh` — Replaced automatic copy loop with interactive prompt; source is now `$PWD` instead of main repo dir
+- `CHANGELOG.md` — Added v0.0.8 section
+
 ## v0.0.7
 
 ### Faster session list with `--all` flag

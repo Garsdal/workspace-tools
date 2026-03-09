@@ -119,36 +119,41 @@ _agent_new() {
     rel="${cwd#$repo_dir/}"
   fi
 
-  # ── Copy local dev files from main repo ──
+  # ── Offer to copy local dev files (.env, .vscode, etc.) ──
   local -a copied_items=()
-  for item in "${AGENT_COPY_PATHS[@]}"; do
-    # Root-level: main_repo/.vscode -> worktree/.vscode
-    local src="$main_repo_dir/$item"
-    if [[ -e "$src" ]]; then
-      if [[ -d "$src" ]]; then
-        rm -rf "$worktree_path/$item"
-        cp -R "$src" "$worktree_path/$item"
-      else
-        cp "$src" "$worktree_path/$item"
-      fi
-      copied_items+=("$item")
-    fi
+  local -a found_items=()
 
-    # Subfolder: main_repo/projects/api/.env -> worktree/projects/api/.env
-    if [[ -n "$rel" ]]; then
-      local sub_src="$main_repo_dir/$rel/$item"
-      if [[ -e "$sub_src" ]]; then
-        mkdir -p "$worktree_path/$rel"
-        if [[ -d "$sub_src" ]]; then
-          rm -rf "$worktree_path/$rel/$item"
-          cp -R "$sub_src" "$worktree_path/$rel/$item"
-        else
-          cp "$sub_src" "$worktree_path/$rel/$item"
-        fi
-        copied_items+=("$rel/$item")
-      fi
+  for item in "${AGENT_COPY_PATHS[@]}"; do
+    if [[ -e "$PWD/$item" ]]; then
+      found_items+=("$item")
     fi
   done
+
+  if (( ${#found_items[@]} )); then
+    echo ""
+    echo "${_C_CYAN}Found local dev files in current directory:${_C_RESET}"
+    for item in "${found_items[@]}"; do
+      echo "  ${_C_DIM}$item${_C_RESET}"
+    done
+    echo -n "Copy to new worktree? [Y/n] "
+    read copy_confirm
+    if [[ "$copy_confirm" != [nN] ]]; then
+      local dest_dir="$worktree_path"
+      if [[ -n "$rel" ]]; then
+        dest_dir="$worktree_path/$rel"
+        mkdir -p "$dest_dir"
+      fi
+      for item in "${found_items[@]}"; do
+        if [[ -d "$PWD/$item" ]]; then
+          rm -rf "$dest_dir/$item"
+          cp -R "$PWD/$item" "$dest_dir/$item"
+        else
+          cp "$PWD/$item" "$dest_dir/$item"
+        fi
+        copied_items+=("$item")
+      done
+    fi
+  fi
 
   # ── Compute workspace folder (map cwd into worktree) ──
   local workspace_folder="$worktree_path"
