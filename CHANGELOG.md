@@ -1,5 +1,16 @@
 # Changelog
 
+## v0.0.9
+
+### Fix `.env` / `.vscode` copy prompt never triggering in `agent new`
+
+Due to a zsh word-splitting quirk, `AGENT_COPY_PATHS` was being stored as a single-element array containing the string `.vscode .env .env.local` rather than three separate entries. The `-e` file-existence check therefore always failed (no file is literally named `.vscode .env .env.local`), so the copy prompt was silently skipped every time.
+
+**Fix:** Use the `=` flag to force word-splitting on the default value.
+
+**Files changed:**
+- `lib/config.zsh` — `${AGENT_COPY_PATHS:-.vscode .env .env.local}` → `${=AGENT_COPY_PATHS:-.vscode .env .env.local}`
+
 ## v0.0.8
 
 ### Interactive copy of `.env` and `.vscode` in `agent new`
