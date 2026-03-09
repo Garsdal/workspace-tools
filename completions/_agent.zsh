@@ -8,7 +8,7 @@ _agent_completion() {
     'open:Re-open an existing workspace'
     'main:Open the main worktree in VS Code'
     'rm:Remove a worktree'
-    'list:List worktrees and workspaces'
+    'list:List sessions (--all to show all)'
     'term:Set terminal tab name'
     'help:Show help'
   )
