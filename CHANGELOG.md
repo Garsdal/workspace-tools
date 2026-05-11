@@ -1,5 +1,14 @@
 # Changelog
 
+## v0.0.10
+
+### Copy `.claude` alongside `.vscode` when creating a new workspace
+
+`agent new` now also detects a `.claude` folder in the current directory and offers to copy it into the new worktree, so Claude Code project settings, commands, and hooks carry over automatically.
+
+**Files changed:**
+- `lib/config.zsh` — Added `.claude` to the default `AGENT_COPY_PATHS` (now `.vscode .claude .env .env.local`)
+
 ## v0.0.9
 
 ### Fix `.env` / `.vscode` copy prompt never triggering in `agent new`
